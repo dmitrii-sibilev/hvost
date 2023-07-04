@@ -46,11 +46,6 @@ class Crm implements HandlerInterface
         );
         $eventManager->addEventHandler(
             'crm',
-            'OnAfterCrmDealAdd',
-            [self::class, 'OnAfterCrmDealAdd']
-        );
-        $eventManager->addEventHandler(
-            'crm',
             'OnAfterCrmDealUpdate',
             [self::class, 'OnAfterCrmDealUpdate']
         );
