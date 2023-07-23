@@ -18,6 +18,8 @@ class Task
 {
     public static function taskAdd($arTask)
     {
+        $arTask['DESCRIPTION'] = str_replace('<br>', '
+', $arTask['DESCRIPTION']);
         $masters = new Master();
         $masterId = $arTask['RESPONSIBLE_ID'];
         $chatId = $masters->getTelegramChatId($masterId);
@@ -40,6 +42,8 @@ class Task
 
     public static function taskUpdate($arTask, $dateChanged = false)
     {
+        $arTask['DESCRIPTION'] = str_replace('<br>', '
+', $arTask['DESCRIPTION']);
         $masters = new Master();
         $masterId = $arTask['RESPONSIBLE_ID'] ?: $arTask['META:PREV_FIELDS']['RESPONSIBLE_ID'];
         $chatId = $masters->getTelegramChatId($masterId);
