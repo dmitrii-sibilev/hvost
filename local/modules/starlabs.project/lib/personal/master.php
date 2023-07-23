@@ -46,4 +46,14 @@ class Master extends Employee
         }
         return $isTop;
     }
+
+    public function getByTelegramChatId($chatId)
+    {
+        return $this->getAllMasters([], ['UF_TELEGRAM_CHAT_ID' => $chatId])[0];
+    }
+
+    public function getTelegramChatId($masterId)
+    {
+        return $this->getAllMasters(['UF_TELEGRAM_CHAT_ID'], ["ID" => $masterId])[0]['UF_TELEGRAM_CHAT_ID'];
+    }
 }

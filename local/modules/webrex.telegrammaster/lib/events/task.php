@@ -21,6 +21,9 @@ class Task
         $masters = new Master();
         $masterId = $arTask['RESPONSIBLE_ID'];
         $chatId = $masters->getTelegramChatId($masterId);
+        if (!$chatId) {
+            return;
+        }
         $Chat = new Chat($chatId, Option::getBotToken());
         if (is_string($arTask['START_DATE_PLAN'])) {
             $arTask['START_DATE_PLAN'] = new DateTime($arTask['START_DATE_PLAN'], 'd.m.Y H:i:s');
@@ -40,6 +43,9 @@ class Task
         $masters = new Master();
         $masterId = $arTask['RESPONSIBLE_ID'] ?: $arTask['META:PREV_FIELDS']['RESPONSIBLE_ID'];
         $chatId = $masters->getTelegramChatId($masterId);
+        if (!$chatId) {
+            return;
+        }
         $Chat = new Chat($chatId, Option::getBotToken());
 
         $taskDateTime = new DateTime($arTask['START_DATE_PLAN'], 'd.m.Y H:i:s');

@@ -7,8 +7,8 @@ use Bitrix\Main\EventManager;
 use Bitrix\Main\Loader;
 use Starlabs\Project\Grooming\Deal;
 use StarLabs\Tools\Events\HandlerInterface;
-use Starlabs\Tools\Helpers\Log;
-use Starlabs\Tools\Helpers\p;
+use Webrex\TelegramMaster\Events\Task;
+use Webrex\TelegramMaster\Helpers\Log;
 
 class Tasks implements HandlerInterface
 {
@@ -21,6 +21,16 @@ class Tasks implements HandlerInterface
             'tasks',
             'OnBeforeTaskUpdate',
             [self::class, 'completeDeal']
+        );
+        $eventManager->addEventHandler(
+            'tasks',
+            'OnTaskUpdate',
+            [self::class, 'sendMasterUpdateMessage']
+        );
+        $eventManager->addEventHandler(
+            'tasks',
+            'OnTaskAdd',
+            [self::class, 'sendMasterAddMessage']
         );
     }
 
@@ -60,6 +70,37 @@ class Tasks implements HandlerInterface
                 throw new \Bitrix\Tasks\ActionFailedException($Deal->LAST_ERROR);
             }
         }
+    }
+
+    public static function sendMasterAddMessage($taskId, $arTaskFields)
+    {
+        if ($arTaskFields["GROUP_ID"] !== \Starlabs\Project\Grooming\Tasks::GROUP_APPOINTMENT_GROOMING_ID) {
+            return;
+        }
+        Loader::includeModule("webrex.telegram");
+        Loader::includeModule("webrex.telegrammaster");
+        Task::taskAdd($arTaskFields);
+    }
+
+    public static function sendMasterUpdateMessage($taskId, &$dataTask, &$copyTask)
+    {
+        if (
+            (int)$dataTask["GROUP_ID"] !== \Starlabs\Project\Grooming\Tasks::GROUP_APPOINTMENT_GROOMING_ID &&
+            (int)$copyTask["GROUP_ID"] !== \Starlabs\Project\Grooming\Tasks::GROUP_APPOINTMENT_GROOMING_ID ||
+            !$dataTask["DESCRIPTION"] ||
+            $dataTask["DESCRIPTION"] == $copyTask['DESCRIPTION'] ||
+            $dataTask['STATUS'] == 5
+        ) {
+            return;
+        }
+        Loader::includeModule("webrex.telegram");
+        Loader::includeModule("webrex.telegrammaster");
+        $isDateChanged = false;
+        if ($dataTask["START_DATE_PLAN"] || $dataTask["END_DATE_PLAN"]) {
+            $isDateChanged = $dataTask["START_DATE_PLAN"]->format('d.m.Y H:i:s') !== $copyTask["START_DATE_PLAN"] || $dataTask["END_DATE_PLAN"]->format('d.m.Y H:i:s') !== $copyTask["END_DATE_PLAN"];
+        }
+        $arTask = \Starlabs\Project\Grooming\Tasks::getById($taskId);
+        Task::taskUpdate($arTask, $isDateChanged);
     }
 
 }
