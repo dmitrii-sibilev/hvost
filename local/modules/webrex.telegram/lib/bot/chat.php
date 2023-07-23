@@ -20,17 +20,21 @@ class Chat
     private bool $haveInputMessage;
     private InputMessage $inputMessage;
     private EntityObject $chatEntityObject;
+    private Sender $sender;
+    private int $botId;
 
 
-    public function __construct(int $chatId)
+    public function __construct(int $chatId, string $botToken)
     {
         $this->chatId = $chatId;
         $this->haveInputMessage = false;
         $this->chatExist = false;
         $this->chatActive = false;
+        $this->sender = new Sender($botToken);
+        $this->botId = Bot::getIdByToken($botToken);
         $chatResult = TelegramChatTable::query()
             ->setSelect(['*'])
-            ->setFilter(['CHAT_ID' => $this->chatId])
+            ->setFilter(['CHAT_ID' => $this->chatId, 'BOT_ID' => $this->botId])
             ->exec();
         if ($chatObj = $chatResult->fetchObject()) {
             $this->chatExist = true;
@@ -64,6 +68,7 @@ class Chat
             'STAGE_ID' => Stage::getRegisteredStageId(),
             'PREVIOUS_STAGE_ID' => '',
             'ACTIVE' => true,
+            'BOT_ID' => $this->botId,
         ];
         $result = TelegramChatTable::add($data);
         $result->getId();
@@ -78,6 +83,8 @@ class Chat
             'CHAT_ID' => $this->getChatId(),
             'CHAT_MESSAGE_ID' => $this->inputMessage->getMessageId(),
             'MESSAGE_TEXT' => $this->inputMessage->getMessageText(),
+            'BOT_ID' => $this->botId,
+            'CODE' => TelegramChatMessageTable::USUAL_MESSAGE
         ];
         if ($this->inputMessage->isChangeMemberStatus()) {
             if ($this->inputMessage->getMessageText() == '/kicked') {
@@ -99,26 +106,31 @@ class Chat
         $this->chatEntityObject->set('ACTIVE', false)->save();
     }
 
-    public function sendMessage(string $messageText, array $arButtons = [])
+    public function sendMessage(string $messageText, array $arButtons = [], $disableNotify = false, $messageCode = '')
     {
         $arParams = [
             'chat_id' => $this->chatId,
             'text' => $messageText,
-            'parse_mode' => 'HTML'
+            'parse_mode' => 'HTML',
+            'disable_notification' => $disableNotify,
         ];
         if ($arButtons) {
             $arParams['reply_markup'] = json_encode($arButtons);
         }
-        $sender = new Sender(Option::get('BOT_TOKEN'));
-        $arSentMessage = $sender->sendMessage($arParams);
-        $this->saveOutputMessage($arSentMessage['message_id'], $messageText);
+        $arSentMessage = $this->sender->sendMessage($arParams);
+        $this->saveOutputMessage($arSentMessage['message_id'], $messageText, $messageCode);
     }
 
-    public function answerCallbackQuery(int $callbackQueryId)
+    public function answerCallbackQuery(int $callbackQueryId, $text = '', $showAlert = false)
     {
         $arParams['callback_query_id'] = $callbackQueryId;
-        $sender = new Sender(Option::get('BOT_TOKEN'));
-        $sentMessage = $sender->answerCallbackQuery($arParams);
+        if ($text) {
+            $arParams['text'] = $text;
+        }
+        if ($showAlert) {
+            $arParams['show_alert'] = $showAlert;
+        }
+        $sentMessage = $this->sender->answerCallbackQuery($arParams);
     }
 
     public function sendDocument(string $fileId, array $arButtons = [])
@@ -130,36 +142,70 @@ class Chat
         if ($arButtons) {
             $arParams['reply_markup'] = json_encode($arButtons);
         }
-        $sender = new Sender(Option::get('BOT_TOKEN'));
-        $arSentMessage = $sender->sendDocument($arParams);
+        $arSentMessage = $this->sender->sendDocument($arParams);
         $this->saveOutputMessage($arSentMessage['message_id'], $fileId);
     }
 
-    public function editInputMessageText(string $messageText)
+    public function editInputMessageText(string $messageText, $arButtons = [], $messageCode = '')
+    {
+        $replyKeyboard = $arButtons?: $this->inputMessage->getReplyKeyboard();
+
+        $this->editMessageText($messageText,$this->inputMessage->getMessageId(), $replyKeyboard , $messageCode);
+    }
+
+    public function editMessageText(string $messageText, int $messageId, $replyKeyboard = [], $messageCode = '')
     {
         $arParams = [
             'chat_id' => $this->chatId,
-            'message_id' => $this->inputMessage->getMessageId(),
+            'message_id' => $messageId,
             'text' => $messageText,
+            'parse_mode' => 'HTML',
         ];
-        $replyMarkup = $this->inputMessage->getReplyKeyboard();
+        $replyMarkup = $replyKeyboard;
         if ($replyMarkup) {
             $arParams['reply_markup'] = json_encode($replyMarkup);
         }
-        $sender = new Sender(Option::get('BOT_TOKEN'));
-        $arSentMessage = $sender->editMessageText($arParams);
-        $this->saveOutputMessage($arSentMessage['message_id'], $messageText);
+        $arSentMessage = $this->sender->editMessageText($arParams);
+        $this->editOutputMessage($arSentMessage['message_id'], $messageText, $messageCode);
     }
 
-    private function saveOutputMessage($messageId, $messageText)
+    private function saveOutputMessage($messageId, $messageText, $messageCode = '')
     {
+        if (!$messageCode) {
+            $messageCode = TelegramChatMessageTable::USUAL_MESSAGE;
+        }
         $data = [
             'SENDER_TYPE' => self::TYPE_OUTPUT,
             'CHAT_ID' => $this->getChatId(),
             'CHAT_MESSAGE_ID' => $messageId,
             'MESSAGE_TEXT' => $messageText,
+            'BOT_ID' => $this->botId,
+            'CODE' => $messageCode,
         ];
         TelegramChatMessageTable::add($data);
+    }
+    private function editOutputMessage($messageId, $messageText, $messageCode = '')
+    {
+        $currentMessage = TelegramChatMessageTable::query()
+            ->setSelect(['ID'])
+            ->setFilter(['CHAT_MESSAGE_ID' => $messageId, 'BOT_ID' => $this->botId, 'CHAT_ID' => $this->getChatId()])
+            ->exec();
+        if (!$message = $currentMessage->fetchObject()) {
+            $this->saveOutputMessage($messageId, $messageText, $messageCode);
+            return;
+        }
+        if (!$messageCode) {
+            $messageCode = TelegramChatMessageTable::USUAL_MESSAGE;
+        }
+        $data = [
+            'SENDER_TYPE' => self::TYPE_OUTPUT,
+            'CHAT_ID' => $this->getChatId(),
+            'CHAT_MESSAGE_ID' => $messageId,
+            'MESSAGE_TEXT' => $messageText,
+            'BOT_ID' => $this->botId,
+            'CODE' => $messageCode,
+        ];
+        TelegramChatMessageTable::update($message->getId(), $data);
     }
 
 
@@ -170,12 +216,11 @@ class Chat
 
     public function deleteMessage(int $messageId)
     {
-        $sender = new Sender(Option::get('BOT_TOKEN'));
         $arParams = [
             'chat_id' => $this->chatId,
             'message_id' => $messageId
         ];
-        $sender->deleteMessage($arParams);
+        $this->sender->deleteMessage($arParams);
     }
 
     public function updateStage(int $stageId)
@@ -193,12 +238,11 @@ class Chat
     {
         $callbackId = $this->getInputMessage()->getCallbackId();
         if ($callbackId) {
-            $sender = new Sender(Option::get('BOT_TOKEN'));
             $arParams = [
                 'chat_id' => $this->chatId,
                 'message_id' => $this->getInputMessage()->getMessageId()
             ];
-            $sender->editInlineMarkup($arParams);
+            $this->sender->editInlineMarkup($arParams);
         }
     }
 
@@ -241,5 +285,51 @@ class Chat
     public function isChatActive(): bool
     {
         return $this->chatActive;
+    }
+
+    public function deleteAllMessages($code = '')
+    {
+        $messages = TelegramChatMessageTable::query()
+            ->setSelect(['ID', 'CHAT_MESSAGE_ID'])
+            ->setFilter(['BOT_ID' => $this->botId, 'CHAT_ID' => $this->chatId, '!CODE' => TelegramChatMessageTable::NOTIFY_MESSAGE]);
+        if ($code) {
+            $messages->whereLike('CODE', "%$code%");
+        }
+        $arQueries = [];
+        while ($message = $messages->fetchObject()) {
+            $arQueries[] = [
+                'chat_id' => $this->chatId,
+                'message_id' => $message->get('CHAT_MESSAGE_ID')
+            ];
+            $message->delete();
+        }
+
+        $this->sender->sendAsync('deleteMessage', $arQueries);
+    }
+
+    public function getChatMessage($messageId)
+    {
+        return TelegramChatMessageTable::query()
+            ->setSelect(['*'])
+            ->setFilter(['CHAT_MESSAGE_ID' => $messageId, 'BOT_ID' => $this->botId])
+            ->exec()->fetchObject();
+    }
+
+    public function getInputChatMessage()
+    {
+        return $this->getChatMessage($this->inputMessage->getMessageId());
+    }
+
+    public function findEditingPriceMessage()
+    {
+        $messages = TelegramChatMessageTable::query()
+            ->setSelect(['ID', 'CHAT_MESSAGE_ID', 'CODE'])
+            ->setFilter(['BOT_ID' => $this->botId, 'CHAT_ID' => $this->chatId])
+            ->whereLike('CODE', '%' . TelegramChatMessageTable::DEAL_PRICE_MESSAGE_PREFIX .'%')
+            ->exec();
+        if ($message = $messages->fetchObject()) {
+            return $message;
+        }
+        return false;
     }
 }

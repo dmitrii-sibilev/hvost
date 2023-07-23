@@ -35,6 +35,7 @@ class TelegramButtonTable extends DataManager
             (new StringField('URL')),
             (new IntegerField('SORT')),
             (new IntegerField('STAGE_ID')),
+            (new IntegerField('BOT_ID')),
         ];
     }
 }

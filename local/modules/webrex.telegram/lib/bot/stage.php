@@ -22,6 +22,13 @@ class Stage
     const ASK_BEGIN_STAGE_CODE = 'ASK_BEGIN';
     const COURSE_INFO_STAGE_CODE = 'COURSE_INFO';
     const PAYMENT_INFO_STAGE_CODE = 'PAYMENT_INFO';
+    const MASTER_REGISTERED_STAGE_CODE = 'MASTER_REGISTERED';
+    const MASTER_TODAY_STAGE_CODE = 'MASTER_TODAY';
+    const MASTER_WEEK_STAGE_CODE = 'MASTER_WEEK';
+    const MASTER_MONTH_STAGE_CODE = 'MASTER_MONTH';
+    const MASTER_DATE_STAGE_CODE = 'MASTER_DATE';
+    const MASTER_EDIT_STAGE_CODE = 'MASTER_EDIT';
+    const MASTER_EDIT_PRICE_STAGE_CODE = 'MASTER_EDIT_PRICE';
 
     /**
      * @param string $code
@@ -71,5 +78,33 @@ class Stage
     public static function getAskBeginStageId()
     {
         return self::getStageByCode(self::ASK_BEGIN_STAGE_CODE)['ID'];
+    }
+    public static function getMasterRegisteredStageId()
+    {
+        return self::getStageByCode(self::MASTER_REGISTERED_STAGE_CODE)['ID'];
+    }
+    public static function getMasterTodayStageId()
+    {
+        return self::getStageByCode(self::MASTER_TODAY_STAGE_CODE)['ID'];
+    }
+    public static function getMasterWeekStageId()
+    {
+        return self::getStageByCode(self::MASTER_WEEK_STAGE_CODE)['ID'];
+    }
+    public static function getMasterMonthStageId()
+    {
+        return self::getStageByCode(self::MASTER_MONTH_STAGE_CODE)['ID'];
+    }
+    public static function getMasterDateStageId()
+    {
+        return self::getStageByCode(self::MASTER_DATE_STAGE_CODE)['ID'];
+    }
+    public static function getMasterEditStageId()
+    {
+        return self::getStageByCode(self::MASTER_EDIT_STAGE_CODE)['ID'];
+    }
+    public static function getMasterEditPriceStageId()
+    {
+        return self::getStageByCode(self::MASTER_EDIT_PRICE_STAGE_CODE)['ID'];
     }
 }

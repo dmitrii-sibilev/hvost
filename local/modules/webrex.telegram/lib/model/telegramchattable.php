@@ -38,6 +38,7 @@ class TelegramChatTable extends DataManager
             (new IntegerField('STAGE_ID')),
             (new IntegerField('PREVIOUS_STAGE_ID')),
             (new BooleanField('ACTIVE')),
+            (new IntegerField('BOT_ID')),
             (new DatetimeField('CREATED_TIME'))
                 ->configureDefaultValue(static function()
                 {

@@ -8,6 +8,10 @@ use Bitrix\Main\SystemException;
 
 class TelegramChatMessageTable extends DataManager
 {
+    const NOTIFY_MESSAGE = 'notify';
+    const USUAL_MESSAGE = 'usual';
+    const TASK_MESSAGE_PREFIX = 'task-';
+    const DEAL_PRICE_MESSAGE_PREFIX = 'dealprice-';
     /**
      * Возвращает название таблицы БД
      * @return string
@@ -34,9 +38,11 @@ class TelegramChatMessageTable extends DataManager
                     return new DateTime();
                 }),
             (new StringField('SENDER_TYPE')),
+            (new StringField('CODE')),
             (new IntegerField('CHAT_ID')),
             (new IntegerField('CHAT_MESSAGE_ID')),
             (new TextField('MESSAGE_TEXT')),
+            (new IntegerField('BOT_ID')),
         ];
     }
 }

@@ -2,13 +2,12 @@
 namespace Webrex\Telegram\Model;
 
 use Bitrix\Main\ORM\{Data\DataManager,
-    Fields\BooleanField,
     Fields\IntegerField,
     Fields\StringField};
 
 use Bitrix\Main\SystemException;
 
-class TelegramStageTable extends DataManager
+class TelegramBotTable extends DataManager
 {
     /**
      * Возвращает название таблицы БД
@@ -16,7 +15,7 @@ class TelegramStageTable extends DataManager
      */
     public static function getTableName()
     {
-        return 'webrex_telegram_stage';
+        return 'webrex_telegram_bot';
     }
 
     /**
@@ -32,7 +31,6 @@ class TelegramStageTable extends DataManager
                 ->configureAutocomplete(),
             (new StringField('CODE')),
             (new StringField('NAME')),
-            (new IntegerField('BOT_ID')),
         ];
     }
 }
